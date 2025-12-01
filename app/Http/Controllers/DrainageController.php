@@ -28,6 +28,14 @@ class DrainageController extends Controller
         //
     }
 
+    public function maps()
+    {
+        $file = public_path('maps/Drainase_B2_Olah_R2.shp.kmz');
+        return response()->file($file, [
+            'Content-Type' => 'application/vnd.google-earth.kmz'
+        ]);
+    }
+
     /**
      * Show the form for creating a new resource.
      */

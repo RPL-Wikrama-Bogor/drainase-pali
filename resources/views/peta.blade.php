@@ -78,7 +78,39 @@
         <button class="btn btn-primary btn-block btn-lg mx-4 mt-3">Terapkan Layer</button>
     </div>
     <div class="col-9">
-        <img src="{{ asset('assets/peta.jpg') }}" class="w-100" style="height: 100%">
+        {{-- <img src="{{ asset('assets/peta.jpg') }}" class="w-100" style="height: 100%"> --}}
+        <div id="map" style="height: 100vh;"></div>
     </div>
 </div>
 @endsection
+
+@push('script')
+<script>
+var map = L.map('map').setView([-2.98, 104.75], 13); // sesuaikan pusatnya
+
+// Base Google Satellite (lebih mirip Google Earth)
+L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains:['mt0','mt1','mt2','mt3']
+}).addTo(map);
+
+// Load GeoJSON Drainase
+fetch("/maps/drainase.json")
+    .then(res => res.json())
+    .then(data => {
+        L.geoJSON(data, {
+            style: {
+                color: "red",
+                weight: 2
+            },
+            onEachFeature: function (feature, layer) {
+                let popup = "";
+                for (let key in feature.properties) {
+                    popup += `<b>${key}</b>: ${feature.properties[key]}<br>`;
+                }
+                layer.bindPopup(popup);
+            }
+        }).addTo(map);
+    });
+</script>
+@endpush

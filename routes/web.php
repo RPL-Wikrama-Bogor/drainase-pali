@@ -10,6 +10,7 @@ Route::get('/', [NewsController::class, 'home'])->name('home');
 Route::get('/peta', function() {
     return view('peta');
 })->name('peta');
+Route::get('/peta/drainase', [DrainageController::class, 'maps'])->name('maps');
 
 Route::get('/login', function() {
     return view('login');
