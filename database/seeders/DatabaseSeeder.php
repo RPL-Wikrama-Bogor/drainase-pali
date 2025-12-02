@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
             DrainageSeeder::class,
             OfficeRoadSeeder::class,
             ComplaintSeeder::class,
+            UserSeeder::class,
         ]);
     }
 }

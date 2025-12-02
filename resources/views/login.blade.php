@@ -17,19 +17,29 @@
 </head>
 
 <body>
-    <div class="card w-50 d-block mx-auto p-5" style="margin-top: 5%">
+    <form action="{{ route('auth') }}" method="POST" class="card w-50 d-block mx-auto p-5" style="margin-top: 5%">
+        @csrf
         <img src="{{asset('assets/logo.png')}}" width="150" class="d-block mx-auto">
         <h2 class="text-center mb-3"><b>ADMINISTRATOR</b></h2>
         <hr>
+        @if (Session::get('failed'))
+            <div class="alert alert-danger">{{ Session::get('failed') }}</div>
+        @endif
         <div class="mb-3">
-            <input type="text" name="username" id="username" placeholder="Username" class="form-control">
+            <input type="email" name="email" id="email" placeholder="Email" class="form-control @error('email') is-invalid @enderror">
+            @error('email')
+                <small class="text-danger">{{ $message }}</small>
+            @enderror
         </div>
         <div class="mb-3">
-            <input type="password" name="password" id="password" placeholder="Password" class="form-control">
+            <input type="password" name="password" id="password" placeholder="Password" class="form-control @error('password') is-invalid @enderror">
+            @error('password')
+                <small class="text-danger">{{ $message }}</small>
+            @enderror
         </div>
         <hr>
-        <button class="btn btn-lg btn-block btn-warning">Masuk</button>
-    </div>
+        <button type="submit" class="btn btn-lg btn-block btn-warning">Masuk</button>
+    </form>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
         integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous">
     </script>

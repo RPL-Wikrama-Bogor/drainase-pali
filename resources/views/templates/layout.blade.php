@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="shortcut icon" href="{{ asset('assets/logo.png') }}" type="image/x-icon">
     <title>Drainase Kabupaten PALI</title>
     <!-- MDB -->
@@ -61,6 +62,7 @@
         }
 
     </style>
+    @stack('style')
 </head>
 
 <body>
@@ -85,21 +87,33 @@
                 <!-- Left links -->
 
                 <div class="d-flex align-items-center">
-                    <a href="{{route('home')}}" class="text-white px-3 me-2">
-                        Home
-                    </a>
-                    <a href="{{ route('peta') }}" class="text-white px-3 me-2">
-                        Peta
-                    </a>
-                    <a href="{{ route('data_drainase') }}" class="text-white px-3 me-2">
-                        Data
-                    </a>
-                    <a href="{{ route('pengaduan') }}" class="text-white px-3 me-2">
-                        Laporan Pengaduan
-                    </a>
-                    <a href="{{ route('login') }}" class="text-white btn btn-outline-warning rounded-pill px-3 me-2">
-                        Masuk
-                    </a>
+                    @if (Auth::check())
+                        <a href="{{ route('admin.dashboard') }}" class="text-white px-3 me-2">
+                            Dashboard
+                        </a>
+                        <a href="{{ route('admin.drainase.index') }}" class="text-white px-3 me-2">
+                            Data Drainase
+                        </a>
+                        <a href="{{ route('logout') }}" class="text-white btn btn-outline-warning rounded-pill px-3 me-2">
+                            Logout
+                        </a>
+                    @else
+                        <a href="{{route('home')}}" class="text-white px-3 me-2">
+                            Home
+                        </a>
+                        <a href="{{ route('peta') }}" class="text-white px-3 me-2">
+                            Peta
+                        </a>
+                        <a href="{{ route('data_drainase') }}" class="text-white px-3 me-2">
+                            Data
+                        </a>
+                        <a href="{{ route('pengaduan') }}" class="text-white px-3 me-2">
+                            Laporan Pengaduan
+                        </a>
+                        <a href="{{ route('login') }}" class="text-white btn btn-outline-warning rounded-pill px-3 me-2">
+                            Masuk
+                        </a>
+                    @endif
                 </div>
             </div>
             <!-- Collapsible wrapper -->

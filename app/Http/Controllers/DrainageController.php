@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Drainage;
-use App\Models\OfficeRoad;
+use App\Models\DrainaseImage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Yajra\DataTables\Facades\DataTables;
+use Illuminate\Support\Str;
 
 class DrainageController extends Controller
 {
@@ -45,13 +48,269 @@ class DrainageController extends Controller
         ]);
     }
 
+    public function index(Request $request)
+    {
+        // Load data dari JSON file
+        $jsonPath = public_path("maps/drainase.json");
+
+        if (!file_exists($jsonPath)) {
+            return back()->with('error', 'File drainase.json tidak ditemukan!');
+        }
+
+        $jsonContent = file_get_contents($jsonPath);
+        $drainaseData = json_decode($jsonContent, true);
+
+        if (!$drainaseData || !isset($drainaseData['features'])) {
+            return back()->with('error', 'Format JSON tidak valid!');
+        }
+
+        $features = collect($drainaseData['features'] ?? []);
+
+        // Load gambar dari database
+        $images = DrainaseImage::all()->keyBy('identifier');
+
+        return view('admin.drainage.index', compact('features', 'images'));
+    }
+
+    public function uploadImage(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'identifier' => 'required|string',
+            'nama_ruas' => 'required|string',
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // Max 5MB
+            'description' => 'nullable|string|max:500'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Generate nama file yang unik
+        $image = $request->file('image');
+        $originalName = $image->getClientOriginalName();
+        $extension = $image->getClientOriginalExtension();
+        $filename = Str::slug($request->nama_ruas) . '_' . time() . '_' . Str::random(10) . '.' . $extension;
+
+        // Tentukan path folder
+        $folderPath = 'drainase/' . date('Y') . '/' . date('m');
+
+        // Simpan gambar ke storage
+        $path = $image->storeAs($folderPath, $filename, 'public');
+
+        // Jika penyimpanan gagal
+        if (!$path) {
+            throw new \Exception('Gagal menyimpan gambar ke storage');
+        }
+
+        // Simpan atau update data gambar ke database
+        $drainaseImage = DrainaseImage::updateOrCreate(
+            ['identifier' => $request->identifier],
+            [
+                'nama_ruas' => $request->nama_ruas,
+                'filename' => $filename,
+                'path' => $path,
+                'original_name' => $originalName,
+                'mime_type' => $image->getMimeType(),
+                'size' => $image->getSize(),
+                'description' => $request->description
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Gambar berhasil diupload!',
+            'data' => [
+                'id' => $drainaseImage->id,
+                'image_url' => $drainaseImage->image_url,
+                'filename' => $drainaseImage->filename
+            ]
+        ]);
+    }
+
+    public function updateImage(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'description' => 'nullable|string|max:500'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $drainaseImage = DrainaseImage::findOrFail($id);
+        $image = $request->file('image');
+
+        // Hapus gambar lama jika ada
+        if ($drainaseImage->path && Storage::disk('public')->exists($drainaseImage->path)) {
+            Storage::disk('public')->delete($drainaseImage->path);
+        }
+
+        // Generate nama file baru
+        $originalName = $image->getClientOriginalName();
+        $extension = $image->getClientOriginalExtension();
+        $filename = Str::slug($drainaseImage->nama_ruas) . '_' . time() . '_' . Str::random(10) . '.' . $extension;
+
+        // Gunakan path folder yang sama
+        $folderPath = dirname($drainaseImage->path);
+        $path = $image->storeAs($folderPath, $filename, 'public');
+
+        // Update data gambar di database
+        $drainaseImage->update([
+            'filename' => $filename,
+            'path' => $path,
+            'original_name' => $originalName,
+            'mime_type' => $image->getMimeType(),
+            'size' => $image->getSize(),
+            'description' => $request->description
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Gambar berhasil diupdate!',
+            'data' => [
+                'image_url' => $drainaseImage->image_url,
+                'filename' => $drainaseImage->filename
+            ]
+        ]);
+    }
+
+    public function deleteImage($id)
+    {
+        $drainaseImage = DrainaseImage::findOrFail($id);
+
+        // Hapus file dari storage
+        if ($drainaseImage->path && Storage::disk('public')->exists($drainaseImage->path)) {
+            Storage::disk('public')->delete($drainaseImage->path);
+        }
+
+        $drainaseImage->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Gambar berhasil dihapus!'
+        ]);
+    }
+
+    public function showImage($id)
+    {
+        $drainaseImage = DrainaseImage::findOrFail($id);
+
+        if (!$drainaseImage->imageExists()) {
+            abort(404, 'Gambar tidak ditemukan');
+        }
+
+        return response()->file($drainaseImage->storage_path);
+    }
+
+    public function downloadImage($id)
+    {
+        $drainaseImage = DrainaseImage::findOrFail($id);
+
+        if (!Storage::disk('public')->exists($drainaseImage->path)) {
+            abort(404, 'File tidak ditemukan');
+        }
+
+        return Storage::disk('public')->download($drainaseImage->path, $drainaseImage->original_name);
+    }
 
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function datatablesAdmin()
     {
-        //
+        $path = public_path("maps/drainase.json");
+
+        // Error handling untuk file
+        if (!file_exists($path)) {
+            return response()->json([
+                "data" => [],
+                "error" => "File drainase.json tidak ditemukan"
+            ]);
+        }
+
+        $content = file_get_contents($path);
+        $json = json_decode($content, true);
+
+        // Error handling untuk JSON decode
+        if ($json === null) {
+            return response()->json([
+                "data" => [],
+                "error" => "Format JSON tidak valid: " . json_last_error_msg()
+            ]);
+        }
+
+        // Pastikan features ada
+        if (!isset($json['features']) || !is_array($json['features'])) {
+            return response()->json([
+                "data" => [],
+                "error" => "Struktur GeoJSON tidak valid"
+            ]);
+        }
+
+        // Kelompokkan data berdasarkan NAMA_RUAS
+        $groupedData = [];
+        foreach ($json['features'] as $feature) {
+            $ruasName = $feature['properties']['NAMA_RUAS'] ?? 'TANPA NAMA';
+
+            if (!isset($groupedData[$ruasName])) {
+                $groupedData[$ruasName] = [];
+            }
+
+            $groupedData[$ruasName][] = $feature;
+        }
+
+        // Format data untuk datatable
+        $rows = [];
+        foreach ($groupedData as $ruasName => $features) {
+            if (empty($features)) continue;
+
+            $firstFeature = $features[0];
+            $firstProperties = $firstFeature['properties'] ?? [];
+
+            // Hitung total panjang
+            $totalPanjangKm = 0;
+            $totalPanjangM = 0;
+            foreach ($features as $feature) {
+                $totalPanjangKm += $feature['properties']['PANJANG_KM'] ?? 0;
+                $totalPanjangM += $feature['properties']['PANJANG_M'] ?? 0;
+            }
+
+            $safeName = $ruasName ?: 'TANPA NAMA';
+            $encoded = rawurlencode($safeName);
+
+            $rows[] = [
+                "DT_RowId" => "row_" . md5($safeName), // ID unik untuk setiap row
+                "nama_ruas" => $safeName,
+                "fungsi_jalan" => $firstProperties['FUNGSI_JLN'] ?? '-',
+                "status_jalan" => $firstProperties['STATUS_JLN'] ?? '-',
+                "panjang_sk_km" => $firstProperties['PANJANG_KM'] ?? 0,
+                "panjang_kajian_km" => round($totalPanjangKm, 3),
+                "panjang_kajian_m" => round($totalPanjangM, 2),
+                "jumlah_segmen" => count($features),
+                "action" => '<div class="btn-group" role="group">
+                    <a href="' . route('data.show', $encoded) . '" class="btn btn-primary btn-sm">
+                        <i class="fas fa-eye"></i> Detail
+                    </a>
+                    <button type="button" class="btn btn-info btn-sm view-map" data-ruas="' . htmlspecialchars($safeName) . '">
+                        <i class="fas fa-map"></i> Peta
+                    </button>
+                </div>'
+            ];
+        }
+
+        return response()->json([
+            "draw" => request()->input('draw', 1),
+            "recordsTotal" => count($rows),
+            "recordsFiltered" => count($rows),
+            "data" => $rows
+        ]);
     }
 
     public function maps()
@@ -93,8 +352,42 @@ class DrainageController extends Controller
             ->filter(fn($f) => $f['properties']['NAMA_RUAS'] == $ruasName)
             ->values();
 
-        // Kirim seluruh features untuk Leaflet
+        // Load semua gambar dari database
+        $allImages = DrainaseImage::all();
+        $images = collect();
+
+        // Mapping identifier dengan prioritas
+        foreach ($allImages as $image) {
+            $identifier = trim($image->identifier);
+
+            // Coba match dengan SEGMEN terlebih dahulu
+            $matchingSegment = $features->first(function($f) use ($identifier) {
+                $props = $f['properties'];
+                $segmentId = $props['SEGMEN'] ?? '';
+                $namaRuas = $props['NAMA_RUAS'] ?? '';
+
+                // Cek apakah identifier cocok dengan SEGMEN
+                if ($segmentId && trim($segmentId) == $identifier) {
+                    return true;
+                }
+
+                // Cek apakah identifier cocok dengan NAMA_RUAS
+                if ($namaRuas && trim($namaRuas) == $identifier) {
+                    return true;
+                }
+
+                return false;
+            });
+
+            if ($matchingSegment) {
+                $props = $matchingSegment['properties'];
+                $key = $props['SEGMEN'] ?? $props['NAMA_RUAS'] ?? 'unknown';
+                $images->put($key, $image);
+            }
+        }
+
         return view("detail-data", [
+            "images" => $images,
             "ruasName" => $ruasName,
             "segments" => $features,
             "geojson"  => $features->map(fn($f) => [
