@@ -98,19 +98,51 @@ L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
 fetch("/maps/drainase.json")
     .then(res => res.json())
     .then(data => {
-        L.geoJSON(data, {
-            style: {
-                color: "red",
-                weight: 2
+
+        let drainLayer = L.geoJSON(data, {
+            style: function (feature) {
+                return {
+                    color: "red",
+                    weight: 2
+                };
             },
+
             onEachFeature: function (feature, layer) {
+
+                // --- POPUP ---
                 let popup = "";
                 for (let key in feature.properties) {
                     popup += `<b>${key}</b>: ${feature.properties[key]}<br>`;
                 }
                 layer.bindPopup(popup);
+
+                // --- HOVER HIGHLIGHT ---
+                const defaultStyle = {
+                    color: "red",
+                    weight: 2
+                };
+
+                layer.on("mouseover", function () {
+                    this.setStyle({
+                        color: "yellow",
+                        weight: 4
+                    });
+                    this.bringToFront();
+                });
+
+                layer.on("mouseout", function () {
+                    this.setStyle(defaultStyle);
+                });
             }
         }).addTo(map);
+
+        // --- AUTO FOCUS PETA KE DATA ---
+        map.fitBounds(drainLayer.getBounds(), {
+            padding: [40, 40],   // memberi jarak agar tidak terlalu mepet
+            maxZoom: 18          // batasi zoom agar tidak terlalu dekat
+        });
+
     });
+
 </script>
 @endpush
