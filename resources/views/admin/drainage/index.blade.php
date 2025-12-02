@@ -88,6 +88,9 @@
                             <span class="badge bg-light text-dark">
                                 Total: {{ $features->count() }} Data
                             </span>
+                            <div>
+                                <a href="{{route('admin.drainase.import')}}" class="btn btn-light"><i class="fas fa-file-import me-2"></i> Import Drainase</a>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">

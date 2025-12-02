@@ -20,11 +20,18 @@
             background: #a8a8a8;
         }
 
-        /* Hover effect untuk badge filter */
+        /* Hover effect untuk badge filter - DIHAPUS */
         .filter-badge {
             padding: 0.35em 0.65em;
             font-weight: 500;
+            transition: all 0.2s ease;
         }
+
+        /* Hapus efek hover pada badge */
+        /* .filter-badge:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        } */
 
         /* Responsive untuk mobile */
         @media (max-width: 768px) {
@@ -182,10 +189,10 @@
         let activeFilters = {};
 
         // Base Google Satellite
-        L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-            attribution: '© Google Satellite'
+            attribution: '© Google Hybrid'
         }).addTo(map);
 
         // Load GeoJSON Drainase
@@ -326,21 +333,8 @@
                         autoPanPadding: [50, 50]
                     });
 
-                    // Hover highlight
-                    const defaultStyle = layer.options.style;
-
-                    layer.on("mouseover", function(e) {
-                        this.setStyle({
-                            color: '#FFD700',
-                            weight: 6,
-                            opacity: 1
-                        });
-                        this.bringToFront();
-                    });
-
-                    layer.on("mouseout", function() {
-                        this.setStyle(defaultStyle);
-                    });
+                    // Hapus hover highlight - hanya klik untuk popup
+                    // Hover effect dihapus sesuai permintaan
                 }
             }).addTo(map);
 
@@ -549,16 +543,17 @@
         opacity: 0.8;
     }
 
-    /* Style untuk filter sidebar */
+    /* Style untuk filter sidebar - hover dihapus */
     .filter-badge {
         transition: all 0.2s ease;
         user-select: none;
     }
 
-    .filter-badge:hover {
+    /* Hapus efek hover */
+    /* .filter-badge:hover {
         transform: translateY(-1px);
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
+    } */
 
     .filter-badge.bg-primary {
         border-color: #007bff !important;

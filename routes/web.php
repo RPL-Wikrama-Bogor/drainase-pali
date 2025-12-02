@@ -34,6 +34,11 @@ Route::middleware('isAdmin')->group(function() {
             return view('admin.dashboard');
         })->name('dashboard');
         Route::prefix('/drainase')->name('drainase.')->group(function() {
+            Route::get('/import', function() {
+                return view('admin.drainage.import');
+            })->name('import');
+            Route::post('/import/process', [DrainageController::class, 'importProcess'])->name('import.process');
+
             Route::get('/', [DrainageController::class, 'index'])->name('index');
             Route::post('/upload-image', [DrainageController::class, 'uploadImage'])->name('upload-image');
             Route::post('/update-image/{id}', [DrainageController::class, 'updateImage'])->name('update-image');

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Yajra\DataTables\Facades\DataTables;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\File;
 
 class DrainageController extends Controller
 {
@@ -349,6 +350,116 @@ class DrainageController extends Controller
     public function store(Request $request)
     {
         //
+    }
+
+    public function importProcess(Request $request)
+    {
+        // Validasi input
+        $validator = Validator::make($request->all(), [
+            'geojson_file' => [
+                'required',
+                'file',
+                'max:10240',
+                function ($attribute, $value, $fail) {
+                    $allowedExtensions = ['json', 'geojson'];
+                    $originalName = $value->getClientOriginalName();
+                    $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+
+                    if (!in_array(strtolower($extension), $allowedExtensions)) {
+                        $fail('File harus berekstensi .json atau .geojon. File Anda: .' . $extension);
+                    }
+                }
+            ],
+            'create_backup' => 'nullable|boolean',
+            'validate_json' => 'nullable|boolean'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->route('admin.drainase.import')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        try {
+            $file = $request->file('geojson_file');
+            $createBackup = $request->boolean('create_backup', true);
+            $validateJson = $request->boolean('validate_json', true);
+
+            // Path target
+            $targetPath = public_path('maps');
+            $targetFile = $targetPath . '/drainase.json';
+
+            // Buat folder maps jika belum ada
+            if (!File::exists($targetPath)) {
+                File::makeDirectory($targetPath, 0755, true);
+            }
+
+            // Validasi struktur JSON jika diperlukan
+            if ($validateJson) {
+                $jsonContent = file_get_contents($file->getRealPath());
+                $parsedJson = json_decode($jsonContent, true);
+
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new \Exception('File bukan JSON yang valid. Error: ' . json_last_error_msg());
+                }
+
+                // Validasi struktur GeoJSON dasar
+                if (!isset($parsedJson['type']) || $parsedJson['type'] !== 'FeatureCollection') {
+                    throw new \Exception('Struktur GeoJSON tidak valid. Harus memiliki "type": "FeatureCollection"');
+                }
+
+                if (!isset($parsedJson['features']) || !is_array($parsedJson['features'])) {
+                    throw new \Exception('Struktur GeoJSON tidak valid. Harus memiliki "features" array');
+                }
+
+                // Validasi setiap feature
+                $validFeatures = 0;
+                foreach ($parsedJson['features'] as $index => $feature) {
+                    if (!isset($feature['type']) || $feature['type'] !== 'Feature') {
+                        throw new \Exception("Feature #{$index} tidak valid: harus memiliki 'type': 'Feature'");
+                    }
+
+                    if (!isset($feature['geometry'])) {
+                        throw new \Exception("Feature #{$index} tidak valid: harus memiliki 'geometry'");
+                    }
+
+                    if (!isset($feature['properties'])) {
+                        throw new \Exception("Feature #{$index} tidak valid: harus memiliki 'properties'");
+                    }
+
+                    $validFeatures++;
+                }
+
+                if ($validFeatures === 0) {
+                    throw new \Exception('Tidak ada fitur yang valid dalam file!');
+                }
+            }
+
+             // Buat backup file lama jika ada dan diminta
+            if ($createBackup && File::exists($targetFile)) {
+                $backupName = 'drainase_backup_' . date('Ymd_His') . '.json';
+                File::copy($targetFile, $targetPath . '/' . $backupName);
+            }
+
+            // Simpan file baru
+            $file->move($targetPath, 'drainase.json');
+
+            // Set permission file
+            chmod($targetFile, 0644);
+
+            // Hitung statistik
+            $jsonContent = file_get_contents($targetFile);
+            $parsedJson = json_decode($jsonContent, true);
+            $featureCount = count($parsedJson['features'] ?? []);
+
+            return redirect()->route('admin.drainase.import')
+                ->with('success', "Data drainase berhasil diimport! {$featureCount} fitur telah diproses.");
+
+        } catch (\Exception $e) {
+            return redirect()->route('admin.drainase.import')
+                ->with('error', 'Gagal mengimport data: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 
     /**
