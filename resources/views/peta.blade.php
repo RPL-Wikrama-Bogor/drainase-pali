@@ -53,7 +53,7 @@
 
 @section('content')
     <div class="row g-0">
-        <div class="col-3" style="height: 100vh; overflow-y: auto; background-color: #f8f9fa;">
+        <div class="col-3" style="height: 100vh; overflow-y: auto; background-color: #f8f9fa; margin-top: 5%">
             <div class="d-flex justify-content-between px-4 py-3 border-bottom">
                 <div class="d-flex">
                     <img src="{{ asset('assets/logo-drainase.png') }}" width="50">
