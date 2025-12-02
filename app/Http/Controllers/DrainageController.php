@@ -321,6 +321,20 @@ class DrainageController extends Controller
         ]);
     }
 
+    public function getImages()
+    {
+        $images = DrainaseImage::all()->map(function($image) {
+            return [
+                'identifier' => $image->identifier,
+                'image_url' => $image->image_url,
+                'description' => $image->description,
+                'original_name' => $image->original_name
+            ];
+        });
+
+        return response()->json($images);
+    }
+
     /**
      * Show the form for creating a new resource.
      */

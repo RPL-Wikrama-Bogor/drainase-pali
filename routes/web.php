@@ -12,6 +12,7 @@ Route::get('/peta', function() {
     return view('peta');
 })->name('peta');
 Route::get('/peta/drainase', [DrainageController::class, 'maps'])->name('maps');
+Route::get('/api/drainase-images', [DrainageController::class, 'getImages']);
 
 Route::get('/data-drainase', function() {
     return view('data');
